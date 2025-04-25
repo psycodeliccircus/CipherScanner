@@ -1,0 +1,24 @@
+{
+  "signatures": [
+    "/help%w+Code/",
+    "assert",
+    "RegisterNetEvent",
+    "PerformHttpRequest"
+  ],
+  "skipDirs": {
+    "node_modules": true,
+    "stream": true,
+    "_cfx_internal": true
+  },
+  "skipFiles": [
+    ".test.lua",
+    "deprecated.lua"
+  ],
+  "luaExt": "lua",
+  "maxOpsPerFrame": 30,
+  "verbose": false,
+  "incremental": true,
+  "autoOnStart": true,
+  "autoInterval": 3600000,
+  "logLevel": "info"
+}
