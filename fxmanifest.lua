@@ -1,10 +1,9 @@
--- fxmanifest.lua
 fx_version 'cerulean'
 game 'gta5'
 
 author 'psycodeliccircus'
-description 'CipherScanner v10 – scanner incremental, paralelo e com update via GitHub Releases'
-version '10.0.0'
+description 'CipherScanner v11 – scanner incremental, paralelo, update via GitHub'
+version '11.0.0'
 
 server_scripts {
     'server.js',

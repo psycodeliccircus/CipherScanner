@@ -1,5 +1,5 @@
 {
-  "version": "10.0.0",
+  "version": "11.0.0",
   "signatures": [
     "/help%w+Code/",
     "assert",
@@ -19,6 +19,7 @@
   "autoOnStart": true,
   "autoInterval": 3600000,
   "logLevel": "info",
+  "showScanned": true,
   "update": {
     "enabled": true,
     "checkInterval": 86400000,
