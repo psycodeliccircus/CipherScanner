@@ -1,23 +1,32 @@
 {
+  "version": "10.0.0",
   "signatures": [
     "/help%w+Code/",
     "assert",
     "RegisterNetEvent",
     "PerformHttpRequest"
   ],
-  "fileExts": [ "lua", "js", "json" ],
+  "fileExts": ["lua", "js", "json"],
   "skipDirs": {
     "node_modules": true,
     "stream": true,
     "_cfx_internal": true
   },
-  "skipFiles": [ ".test.lua", "deprecated.lua" ],
+  "skipFiles": [".test.lua", "deprecated.lua"],
   "maxOpsPerFrame": 30,
   "verbose": false,
   "incremental": true,
   "autoOnStart": true,
   "autoInterval": 3600000,
   "logLevel": "info",
+  "update": {
+    "enabled": true,
+    "checkInterval": 86400000,
+    "github": {
+      "owner": "psycodeliccircus",
+      "repo": "CipherScanner"
+    }
+  },
   "webhook": {
     "enabled": false,
     "url": ""
