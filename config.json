@@ -5,20 +5,21 @@
     "RegisterNetEvent",
     "PerformHttpRequest"
   ],
+  "fileExts": [ "lua", "js", "json" ],
   "skipDirs": {
     "node_modules": true,
     "stream": true,
     "_cfx_internal": true
   },
-  "skipFiles": [
-    ".test.lua",
-    "deprecated.lua"
-  ],
-  "luaExt": "lua",
+  "skipFiles": [ ".test.lua", "deprecated.lua" ],
   "maxOpsPerFrame": 30,
   "verbose": false,
   "incremental": true,
   "autoOnStart": true,
   "autoInterval": 3600000,
-  "logLevel": "info"
+  "logLevel": "info",
+  "webhook": {
+    "enabled": false,
+    "url": ""
+  }
 }

@@ -1,10 +1,8 @@
-// server.js (v8)
-const fs      = require('fs');
-const current = GetCurrentResourceName();
+// server.js (unchanged, mas incluído novamente para contexto)
+const fs      = require('fs')
+const current = GetCurrentResourceName()
 
-function isAuth() {
-    return GetInvokingResource() === current;
-}
+function isAuth() { return GetInvokingResource() === current }
 
 exports('readDir', dir => {
     if (!isAuth()) return false;
