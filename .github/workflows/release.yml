@@ -1,11 +1,15 @@
+# .github/workflows/release.yml
+
 name: Create Release
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - '**/**'
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -19,26 +23,32 @@ jobs:
         id: get_version
         run: |
           VERSION=$(jq -r '.version' config.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Zip repository
-        run: |
-          VERSION=${{ steps.get_version.outputs.version }}
-          zip -r "CipherScanner-${VERSION}.zip" . -x .git/**\* node_modules/**\*
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
-          release_name: "CipherScanner V${{ steps.get_version.outputs.version }}"
-          draft: false
-          prerelease: false
+          tag_name:     v${{ env.VERSION }}
+          release_name: CipherScanner V${{ env.VERSION }}
+          body:         "Automated release v${{ env.VERSION }}"
+          draft:        false
+          prerelease:   false
+
+      - name: Package ZIP
+        run: |
+          zip -r "CipherScanner-${{ env.VERSION }}.zip" . \
+            -x ".git/**" "node_modules/**"
 
       - name: Upload Release Asset
-        uses: softprops/action-upload-release-asset@v1
+        id: upload_asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "CipherScanner-${{ steps.get_version.outputs.version }}.zip"
-          asset_name: "CipherScanner.zip"
+          upload_url:        ${{ steps.create_release.outputs.upload_url }}
+          asset_path:        "./CipherScanner-${{ env.VERSION }}.zip"
+          asset_name:        "CipherScanner-${{ env.VERSION }}.zip"
           asset_content_type: application/zip
