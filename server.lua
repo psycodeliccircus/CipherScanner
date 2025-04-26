@@ -1,273 +1,82 @@
-local currentRes   = GetCurrentResourceName()
-local exp          = exports[currentRes]
-local readDir, isDir   = exp.readDir, exp.isDir
-local getFileMTime = exp.getFileMTime
-local loadFile     = LoadResourceFile
-local saveFile     = SaveResourceFile
-local numRes       = GetNumResources
-local getResByIdx  = GetResourceByFindIndex
-local getResState  = GetResourceState
-local getResPath   = GetResourcePath
-local gameTimer    = GetGameTimer
-local jsonEncode   = json and json.encode
-local jsonDecode   = json and json.decode
-local os_date      = os.date
+-- server.lua
+local currentRes = GetCurrentResourceName()
+local jsonDecode = json and json.decode
 
--- Estados globais
-local config, cache, resultsLog, stats = {}, {}, {}, {}
-local opCount, updateAvailable, remoteInfo = 0, false, nil
-
--- Níveis de log
-local levels = { error=1, warn=2, info=3, debug=4 }
-local function log(level, fmt, ...)
-    if levels[level] <= levels[config.logLevel or 'info'] then
-        local ts = os_date("!%Y-%m-%d %H:%M:%S UTC")
-        print(("[cipher][%s][%s][%s] %s")
-            :format(currentRes, level:upper(), ts, fmt:format(...)))
-    end
-end
-
--- Throttle para não travar o loop
-local function yieldIfNeeded()
-    opCount = opCount + 1
-    if opCount >= (config.maxOpsPerFrame or 30) then
-        opCount = 0
-        Citizen.Wait(0)
-    end
-end
-
--- Helpers JSON
+-- JSON helper mínimo
 local function loadJSON(name)
     local raw = LoadResourceFile(currentRes, name)
     if not raw then return {} end
     local ok, data = pcall(jsonDecode, raw)
-    if not ok then log('warn', 'falha ao decodificar %s', name) end
-    return type(data)=='table' and data or {}
+    return ok and type(data)=='table' and data or {}
 end
 
-local function saveJSON(name, tbl)
-    local ok, err = pcall(function()
-        SaveResourceFile(currentRes, name, jsonEncode(tbl), -1)
-    end)
-    if not ok then log('error', 'falha ao salvar %s: %s', name, err) end
-end
-
--- Reload / Persist
-local function reloadConfig()    config = loadJSON('config.json') end
-local function reloadCache()     cache  = loadJSON('cipher_cache.json') end
-local function persistCache()    saveJSON('cipher_cache.json', cache) end
-local function persistResults()  saveJSON('cipher_results.json', resultsLog) end
-
--- Check updates via GitHub Releases
+-- Update checker
 local function checkUpdate()
-    if not (config.update and config.update.enabled and config.update.github) then return end
+    local cfg = loadJSON('config.json').update
+    if not cfg or not cfg.enabled then return end
 
-    local u = config.update.github
-    local url = string.format(
-        "https://api.github.com/repos/%s/%s/releases/latest",
-        u.owner, u.repo
-    )
+    local gh = cfg.github
+    local url = ("https://api.github.com/repos/%s/%s/releases/latest")
+                :format(gh.owner, gh.repo)
+    local headers = {
+        ["User-Agent"] = "CipherScanner",
+        ["Accept"]     = "application/vnd.github.v3+json"
+    }
+    if gh.token and #gh.token>0 then
+        headers["Authorization"] = "token "..gh.token
+    end
 
     PerformHttpRequest(url, function(code, body)
-        if code == 200 and body then
+        if code==403 then
+            print("[cipher][WARN] 403 do GitHub – possivelmente rate-limit.")
+            return
+        end
+        if code==200 and body then
             local ok, data = pcall(jsonDecode, body)
-            if ok and data.tag_name then
-                if data.tag_name ~= config.version then
-                    updateAvailable = true
-                    remoteInfo = {
-                        version     = data.tag_name,
-                        downloadUrl = (data.assets and data.assets[1] and data.assets[1].browser_download_url) or data.html_url,
-                        changelog   = data.body or ""
-                    }
-                    log('info', "nova versão %s disponível → %s", remoteInfo.version, remoteInfo.downloadUrl)
-                    TriggerClientEvent('cipher:updateAvailable', -1, remoteInfo)
-                else
-                    log('info', "já na última versão (%s)", config.version)
-                end
-            end
-        else
-            log('warn', "falha ao checar GitHub (%s)", tostring(code))
-        end
-    end, 'GET', '', {
-        ['User-Agent'] = 'CipherScanner',
-        ['Accept']     = 'application/vnd.github.v3+json'
-    })
-end
-
--- Utilitários de scan
-local function fileExt(name) return name:match("%.([^.]+)$") end
-
-local function shouldSkipFile(rel)
-    if config.skipFiles then
-        for _, pat in ipairs(config.skipFiles) do
-            if rel:find(pat,1,true) then return true end
-        end
-    end
-    return false
-end
-
-local function needsScan(res, path)
-    if not config.incremental then return true end
-    local full = getResPath(res) .. '/' .. path
-    local mtime = getFileMTime(full)
-    local prev  = cache[res] and cache[res][path]
-    return not prev or mtime > prev
-end
-
-local function updateCache(res, path)
-    cache[res] = cache[res] or {}
-    cache[res][path] = getFileMTime(getResPath(res) .. '/' .. path)
-end
-
--- Scan de um recurso
-local function scanResource(resName)
-    local t0 = gameTimer()
-    local base = getResPath(resName)
-    local stack = { '' }
-    local found, scanned = {}, {}
-    local cnt = 0
-    opCount = 0
-
-    while #stack > 0 do
-        local rel = table.remove(stack)
-        local dir = base .. (rel == '' and '' or '/' .. rel)
-        local ok, items = pcall(readDir, dir)
-        if ok and items then
-            for _, item in ipairs(items) do
-                yieldIfNeeded()
-                local relPath = (rel == '' and item or rel .. '/' .. item)
-                scanned[#scanned + 1] = relPath
-                if shouldSkipFile(relPath) then goto continue end
-
-                local full = base .. '/' .. relPath
-                if isDir(full) then
-                    if not (config.skipDirs or {})[item:lower()] then
-                        stack[#stack + 1] = relPath
-                    end
-                elseif fileExt(item) and needsScan(resName, relPath) then
-                    cnt = cnt + 1
-                    local ok2, content = pcall(loadFile, resName, relPath)
-                    if ok2 and content then
-                        for _, sig in ipairs(config.signatures or {}) do
-                            local match = sig:match('^/.+/$')
-                                          and content:match(sig:sub(2,-2))
-                                          or content:find(sig,1,true)
-                            if match then
-                                found[#found + 1] = relPath
-                                if config.verbose then
-                                    log('debug','match [%s] em %s', sig, relPath)
-                                end
-                                break
-                            end
-                        end
-                    end
-                    updateCache(resName, relPath)
-                end
-                ::continue::
+            if ok and data.tag_name and data.tag_name~=loadJSON('config.json').version then
+                local info = {
+                    version     = data.tag_name,
+                    downloadUrl = (data.assets and data.assets[1] and data.assets[1].browser_download_url)
+                                  or data.html_url,
+                    changelog   = data.body or ""
+                }
+                print(("[cipher][INFO] Nova versão %s disponível → %s")
+                      :format(info.version, info.downloadUrl))
+                TriggerClientEvent('cipher:updateAvailable', -1, info)
             end
         end
-    end
-
-    stats[resName]      = { files=cnt, matches=#found, time=gameTimer()-t0 }
-    resultsLog[resName] = found
-    log('info','%s → %d arquivos, %d hits em %dms', resName, cnt, #found, stats[resName].time)
-
-    if config.showScanned then
-        log('info','Arquivos lidos em %s:', resName)
-        for _, p in ipairs(scanned) do
-            log('info','  - %s', p)
-        end
-    end
+    end, 'GET', '', headers)
 end
 
--- Scan completo ou recurso-alvo
-local function scanAll(target)
-    reloadConfig(); reloadCache()
-    resultsLog, stats = {}, {}
-    log('info','Iniciando %s scan (incremental=%s)', target or 'full', tostring(config.incremental))
+-- carregar módulo de scan (já define scanAll, reloadConfig, etc)
+-- **NÃO** use dofile: FiveM já instancia `scanAll.lua` antes
+-- e disponibiliza globalmente scanAll(), reloadConfig(), etc.
 
-    local toScan = {}
-    if target then
-        toScan = { target }
-    else
-        for i = 0, numRes() - 1 do
-            yieldIfNeeded()
-            local name = getResByIdx(i)
-            if name and getResState(name) == 'started' and name ~= currentRes
-               and not (config.skipDirs or {})[name] then
-                toScan[#toScan + 1] = name
-            end
-        end
-    end
-
-    local total, done = #toScan, 0
-    for _, res in ipairs(toScan) do
-        CreateThread(function()
-            scanResource(res)
-            done = done + 1
-            TriggerClientEvent('cipher:resourceScanned', -1, res, stats[res])
-            if done == total then
-                persistCache(); persistResults(); generateReport(); sendWebhook()
-                TriggerClientEvent('cipher:scanComplete', -1, stats)
-            end
-        end)
-    end
-end
-
--- Comando /cipherscan
-RegisterCommand('cipherscan', function(src,args)
+-- comandos
+RegisterCommand('cipherscan', function(src, args)
     local cmd = args[1] and args[1]:lower()
-    if cmd == 'start' then
+    if cmd=='start' then
         scanAll(args[2])
-    elseif cmd == 'update' then
-        log('info','Checando update...')
+    elseif cmd=='update' then
+        print("[cipher][INFO] Checando update...")
         checkUpdate()
-    elseif cmd == 'reload' then
-        reloadConfig(); log('info','Config recarregada')
-    elseif cmd == 'clear' then
-        resultsLog, cache = {}, {}
-        persistCache(); persistResults()
-        log('info','Logs limpos')
-    elseif cmd == 'export' then
-        persistResults(); generateReport()
-        log('info','Export completo')
-    elseif cmd == 'stats' then
-        for r,s in pairs(stats) do
-            log('info','%s → %d/%d em %dms', r, s.matches, s.files, s.time)
-        end
     else
-        log('info','Uso: /cipherscan [start [res]|update|reload|clear|export|stats]')
+        print("Uso: /cipherscan [start [res]|update]")
     end
 end, true)
 
--- Eventos
-AddEventHandler('onResourceStart', function(res)
-    if res ~= currentRes and config.autoOnStart then
-        log('info','Recurso %s iniciado → scan incremental', res)
-        scanAll(res)
-    end
-end)
-
-RegisterNetEvent('cipher:requestResults')
-AddEventHandler('cipher:requestResults', function()
-    TriggerClientEvent('cipher:report', source, resultsLog)
-end)
-
-RegisterNetEvent('cipher:getStats')
-AddEventHandler('cipher:getStats', function()
-    TriggerClientEvent('cipher:stats', source, stats)
-end)
-
--- Scheduler: update checks & scan inicial
+-- loop de scheduler
 CreateThread(function()
     Citizen.Wait(100)
-    reloadConfig(); reloadCache()
-    if config.update and config.update.enabled then
-        checkUpdate()
+    -- primeira checagem e scan
+    checkUpdate()
+    scanAll()
+    -- ciclo periódico de update
+    local cfg = loadJSON('config.json').update
+    if cfg and cfg.enabled then
         while true do
-            Citizen.Wait(config.update.checkInterval or 86400000)
+            Citizen.Wait(cfg.checkInterval or 86400000)
             checkUpdate()
         end
     end
-    scanAll()
 end)

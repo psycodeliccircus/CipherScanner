@@ -25,7 +25,8 @@
     "checkInterval": 86400000,
     "github": {
       "owner": "psycodeliccircus",
-      "repo": "CipherScanner"
+      "repo": "CipherScanner",
+      "token": ""
     }
   },
   "webhook": {
