@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # necessário para criar releases e enviar assets
+  contents: write  # permite criar releases e enviar assets
 
 jobs:
   release:
@@ -19,10 +19,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Read version from config.json
+      - name: Read version from fxmanifest.lua
         id: get_version
         run: |
-          echo "VERSION=$(jq -r '.version' config.json)" >> $GITHUB_ENV
+          VERSION=$(grep -Po "(?<=version ')[^']+" fxmanifest.lua)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_release
@@ -32,14 +33,14 @@ jobs:
         with:
           tag_name:     ${{ env.VERSION }}
           release_name: CipherScanner V${{ env.VERSION }}
-          body:         Esta e a mais nova versão ${{ env.VERSION }}
+          body:         Esta é a mais nova versão ${{ env.VERSION }}
           draft:        false
           prerelease:   false
 
       - name: Package ZIP
         run: |
           zip -r "CipherScanner-${{ env.VERSION }}.zip" . \
-            -x ".git/**" "node_modules/**"
+            -x ".git/**" "node_modules/**" ".github/**"
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
