@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # necessário para criar releases e enviar assets
 
 jobs:
   release:
@@ -28,9 +28,8 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
+          token:        ${{ secrets.GH_TOKEN }}
           tag_name:     v${{ env.VERSION }}
           release_name: CipherScanner V${{ env.VERSION }}
           body:         "Automated release v${{ env.VERSION }}"
@@ -45,10 +44,9 @@ jobs:
       - name: Upload Release Asset
         id: upload_asset
         uses: actions/upload-release-asset@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url:        ${{ steps.create_release.outputs.upload_url }}
-          asset_path:        "./CipherScanner-${{ env.VERSION }}.zip"
-          asset_name:        "CipherScanner-${{ env.VERSION }}.zip"
+          asset_path:        ./CipherScanner-${{ env.VERSION }}.zip
+          asset_name:        CipherScanner-${{ env.VERSION }}.zip
           asset_content_type: application/zip
+          token:             ${{ secrets.GH_TOKEN }}
