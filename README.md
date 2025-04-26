@@ -1,4 +1,4 @@
-# CipherScanner v12.0.0
+# CipherScanner
 
 [![Version](https://img.shields.io/badge/version-12.0.0-blue.svg)](https://github.com/psycodeliccircus/CipherScanner/releases/tag/v12.0.0)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 

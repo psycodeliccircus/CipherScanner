@@ -1,5 +1,5 @@
 {
-  "version": "11.0.0",
+  "version": "12.0.0",
   "signatures": [
     "/help%w+Code/",
     "assert",
@@ -13,13 +13,16 @@
     "_cfx_internal": true
   },
   "skipFiles": [".test.lua", "deprecated.lua"],
+  "skipResources": [],
   "maxOpsPerFrame": 30,
   "verbose": false,
   "incremental": true,
   "autoOnStart": true,
   "autoInterval": 3600000,
-  "logLevel": "info",
+  "logLevel": "debug",
   "showScanned": true,
+  "showDiff": true,
+  "historyLimit": 5,
   "update": {
     "enabled": true,
     "checkInterval": 86400000,

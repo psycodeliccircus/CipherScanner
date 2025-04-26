@@ -1,19 +1,21 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'psycodeliccircus'
-description 'CipherScanner v11 – scanner modularizado'
-version '11.0.0'
+author 'RenildoMarcio'
+description 'CipherScanner v12'
+version '12.0.0'
 
 server_scripts {
     'server.js',
-    'scanAll.lua',   -- agora carregamos o módulo de scan primeiro
-    'server.lua',    -- depois o core: update checker & comandos
+    'utils.lua',
+    'scanner.lua',
+    'server.lua',
 }
 
 files {
     'config.json',
     'cipher_cache.json',
     'cipher_results.json',
+    'cipher_history.json',
     'report.md',
 }
