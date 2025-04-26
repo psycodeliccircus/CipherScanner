@@ -30,9 +30,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name:     v${{ env.VERSION }}
+          tag_name:     ${{ env.VERSION }}
           release_name: CipherScanner V${{ env.VERSION }}
-          body:         Automated release for version ${{ env.VERSION }}
+          body:         Esta e a mais nova versão ${{ env.VERSION }}
           draft:        false
           prerelease:   false
 
