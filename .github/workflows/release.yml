@@ -1,0 +1,44 @@
+name: Create Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/**'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Read version from config.json
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' config.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Zip repository
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          zip -r "CipherScanner-${VERSION}.zip" . -x .git/**\* node_modules/**\*
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          release_name: "CipherScanner V${{ steps.get_version.outputs.version }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: softprops/action-upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "CipherScanner-${{ steps.get_version.outputs.version }}.zip"
+          asset_name: "CipherScanner.zip"
+          asset_content_type: application/zip
