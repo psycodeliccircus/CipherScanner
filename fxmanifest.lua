@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'RenildoMarcio'
 description 'CipherScanner v12'
-version '12.0.2'
+version '12.0.3'
 
 server_scripts {
     'server.js',
