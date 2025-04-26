@@ -22,17 +22,17 @@ jobs:
       - name: Read version from config.json
         id: get_version
         run: |
-          VERSION=$(jq -r '.version' config.json)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$(jq -r '.version' config.json)" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          token:        ${{ secrets.GH_TOKEN }}
           tag_name:     v${{ env.VERSION }}
           release_name: CipherScanner V${{ env.VERSION }}
-          body:         "Automated release v${{ env.VERSION }}"
+          body:         Automated release for version ${{ env.VERSION }}
           draft:        false
           prerelease:   false
 
@@ -42,11 +42,11 @@ jobs:
             -x ".git/**" "node_modules/**"
 
       - name: Upload Release Asset
-        id: upload_asset
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          upload_url:        ${{ steps.create_release.outputs.upload_url }}
-          asset_path:        ./CipherScanner-${{ env.VERSION }}.zip
-          asset_name:        CipherScanner-${{ env.VERSION }}.zip
+          upload_url:         ${{ steps.create_release.outputs.upload_url }}
+          asset_path:         "./CipherScanner-${{ env.VERSION }}.zip"
+          asset_name:         "CipherScanner-${{ env.VERSION }}.zip"
           asset_content_type: application/zip
-          token:             ${{ secrets.GH_TOKEN }}
