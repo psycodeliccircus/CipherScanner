@@ -4,7 +4,8 @@ name: Create Release
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -15,19 +16,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Faz checkout do código
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2) Extrai a versão do fxmanifest.lua
       - name: Extract version from fxmanifest.lua
         id: get_version
         run: |
-          VERSION=$(grep -Po "(?<=version ')[^']+" fxmanifest.lua)
-          # Usa o comando set-output para disponibilizar o valor
-          echo "::set-output name=version::$VERSION"
+          # Só casa a linha que começa com "version '"
+          VERSION=$(grep -m1 -Po "(?<=^version ')[^']+" fxmanifest.lua)
+          # Exporta como saída do passo
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # 3) Cria o Release no GitHub
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -40,19 +39,17 @@ jobs:
           draft:        false
           prerelease:   false
 
-      # 4) Empacota num ZIP, excluindo .git/, node_modules/ e .github/
       - name: Package ZIP
         run: |
           zip -r "CipherScanner-${{ steps.get_version.outputs.version }}.zip" . \
             -x ".git/**" "node_modules/**" ".github/**"
 
-      # 5) Envia o ZIP como asset do Release
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url:         ${{ steps.create_release.outputs.upload_url }}
-          asset_path:         ./CipherScanner-${{ steps.get_version.outputs.version }}.zip
-          asset_name:         CipherScanner-${{ steps.get_version.outputs.version }}.zip
+          asset_path:         "./CipherScanner-${{ steps.get_version.outputs.version }}.zip"
+          asset_name:         "CipherScanner-${{ steps.get_version.outputs.version }}.zip"
           asset_content_type: application/zip
