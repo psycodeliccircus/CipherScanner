@@ -23,7 +23,7 @@ jobs:
         id: get_version
         run: |
           VERSION=$(grep -Po "(?<=version ')[^']+" fxmanifest.lua)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         id: create_release
@@ -31,15 +31,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name:     ${{ env.VERSION }}
-          release_name: CipherScanner V${{ env.VERSION }}
-          body:         Esta é a mais nova versão ${{ env.VERSION }}
+          tag_name:     v${{ steps.get_version.outputs.version }}
+          release_name: CipherScanner V${{ steps.get_version.outputs.version }}
+          body:         Automated release for version ${{ steps.get_version.outputs.version }}
           draft:        false
           prerelease:   false
 
       - name: Package ZIP
         run: |
-          zip -r "CipherScanner-${{ env.VERSION }}.zip" . \
+          zip -r "CipherScanner-${{ steps.get_version.outputs.version }}.zip" . \
             -x ".git/**" "node_modules/**" ".github/**"
 
       - name: Upload Release Asset
@@ -48,6 +48,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url:         ${{ steps.create_release.outputs.upload_url }}
-          asset_path:         "./CipherScanner-${{ env.VERSION }}.zip"
-          asset_name:         "CipherScanner-${{ env.VERSION }}.zip"
+          asset_path:         "./CipherScanner-${{ steps.get_version.outputs.version }}.zip"
+          asset_name:         "CipherScanner-${{ steps.get_version.outputs.version }}.zip"
           asset_content_type: application/zip
